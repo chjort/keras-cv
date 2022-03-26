@@ -17,6 +17,7 @@ from absl import logging
 from tensorflow.keras import backend
 
 from keras_cv.utils import fill_utils
+from keras_cv.utils import bounding_box
 
 
 class CutMix(layers.Layer):
@@ -117,6 +118,25 @@ class CutMix(layers.Layer):
             cut_height,
             tf.gather(images, permutation_order),
         )
+
+        # convert to corners bounding boxes
+        xywh = tf.stack([random_center_width, random_center_height, cut_width, cut_height], axis=1)
+        xywh = tf.cast(xywh, tf.float32)
+        corners = bounding_box.xywh_to_corners(xywh)
+
+        # compute bounding box masks
+        input_shape = tf.shape(images)
+        batch_size, image_height, image_width = (
+            input_shape[0],
+            input_shape[1],
+            input_shape[2],
+        )
+        mask_shape = (image_width, image_height)
+        is_rectangle = fill_utils.rectangle_masks(corners, mask_shape)
+        is_rectangle = tf.expand_dims(is_rectangle, axis=-1)
+
+        # fill bounding boxes
+        images = tf.where(is_rectangle, tf.gather(images, permutation_order), images)
 
         return images, labels, lambda_sample, permutation_order
 

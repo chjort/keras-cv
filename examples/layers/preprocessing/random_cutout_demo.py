@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from keras_cv.layers import preprocessing
+from keras_cv.layers.preprocessing import random_cutout_pr
 
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 64
@@ -45,8 +46,10 @@ def main():
         .batch(BATCH_SIZE)
     )
     random_cutout = preprocessing.RandomCutout(
-        height_factor=(0.3, 0.9),
-        width_factor=64,
+    # random_cutout = random_cutout_pr.RandomCutout(
+        height_factor=100,
+        width_factor=100,
+        num_cutouts=3,
         fill_mode="gaussian_noise",
     )
     train_ds = train_ds.map(
