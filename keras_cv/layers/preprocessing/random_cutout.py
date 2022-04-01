@@ -45,6 +45,12 @@ class RandomCutout(tf.keras.__internal__.layers.BaseImageAugmentationLayer):
             - *gaussian_noise*: Pixels are filled with random gaussian noise.
         fill_value: a float represents the value to be filled inside the patches
             when `fill_mode="constant"`.
+        num_cutouts: One of:
+            - An integer representing the absolute number of cutouts
+            - A tuple of size 2, representing the range for the number of cutouts.
+            For example, `num_cutouts=10` results in 10 cutouts.
+            `num_cutouts=(2,8)` results in num_cutouts between [2, 8]. Can be used
+            to implement coarse dropout. Defaults to 1.
 
     Sample usage:
     ```python
@@ -60,6 +66,7 @@ class RandomCutout(tf.keras.__internal__.layers.BaseImageAugmentationLayer):
         width_factor,
         fill_mode="constant",
         fill_value=0.0,
+        num_cutouts=1,
         seed=None,
         **kwargs,
     ):
@@ -67,8 +74,10 @@ class RandomCutout(tf.keras.__internal__.layers.BaseImageAugmentationLayer):
 
         self.height_lower, self.height_upper = self._parse_bounds(height_factor)
         self.width_lower, self.width_upper = self._parse_bounds(width_factor)
+        self.num_cutouts_lower, self.num_cutouts_upper = self._parse_bounds(num_cutouts)
         self.fill_mode = fill_mode
         self.fill_value = fill_value
+        self.num_cutouts = num_cutouts
         self.seed = seed
 
         if fill_mode not in ["gaussian_noise", "constant"]:
@@ -89,6 +98,13 @@ class RandomCutout(tf.keras.__internal__.layers.BaseImageAugmentationLayer):
                 "`width_factor` must have lower bound and upper bound "
                 "with same type, got {} and {}".format(
                     type(self.width_lower), type(self.width_upper)
+                )
+            )
+        if not isinstance(self.num_cutouts_lower, type(self.num_cutouts_upper)):
+            raise ValueError(
+                "`num_cutouts` must have lower bound and upper bound "
+                "with same type, got {} and {}".format(
+                    type(self.num_cutouts_lower), type(self.num_cutouts_upper)
                 )
             )
 
@@ -117,6 +133,23 @@ class RandomCutout(tf.keras.__internal__.layers.BaseImageAugmentationLayer):
                     "`width_factor` must have values between [0, 1] "
                     "when is float, got {}".format(width_factor)
                 )
+
+        if self.num_cutouts_upper < self.num_cutouts_lower:
+            raise ValueError(
+                "`num_cutouts` cannot have upper bound less than lower bound"
+            )
+        if not isinstance(self.num_cutouts_upper, int):
+            raise ValueError(
+                "`num_cutouts` must be dtype int, got {}".format(
+                    type(self.num_cutouts_upper)
+                )
+            )
+        if not isinstance(self.num_cutouts_lower, int):
+            raise ValueError(
+                "`num_cutouts` must be dtype int, got {}".format(
+                    type(self.num_cutouts_lower)
+                )
+            )
 
     def _parse_bounds(self, factor):
         if isinstance(factor, (tuple, list)):
